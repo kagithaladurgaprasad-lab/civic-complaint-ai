@@ -1,3 +1,6 @@
+import os
+
+from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -5,18 +8,42 @@ from qdrant_client.models import (
 )
 
 
-# -----------------------------
-# Qdrant local database
-# -----------------------------
+# ==========================================
+# Load environment variables
+# ==========================================
+
+load_dotenv()
+
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+
+if not QDRANT_URL:
+    raise ValueError(
+        "QDRANT_URL is not set. "
+        "Please add it to your .env file."
+    )
+
+if not QDRANT_API_KEY:
+    raise ValueError(
+        "QDRANT_API_KEY is not set. "
+        "Please add it to your .env file."
+    )
+
+
+# ==========================================
+# Qdrant Cloud
+# ==========================================
 
 client = QdrantClient(
-    path="qdrant_data"
+    url=QDRANT_URL,
+    api_key=QDRANT_API_KEY
 )
 
 
-# -----------------------------
+# ==========================================
 # Collection names
-# -----------------------------
+# ==========================================
 
 TEXT_COLLECTION = "historical_complaints"
 
@@ -24,9 +51,10 @@ IMAGE_COLLECTION = "image_complaints"
 
 DOCUMENT_COLLECTION = "municipal_documents"
 
-# -----------------------------
+
+# ==========================================
 # Create text collection
-# -----------------------------
+# ==========================================
 
 def create_text_collection():
 
@@ -52,9 +80,9 @@ def create_text_collection():
         )
 
 
-# -----------------------------
+# ==========================================
 # Create image collection
-# -----------------------------
+# ==========================================
 
 def create_image_collection():
 
@@ -78,6 +106,12 @@ def create_image_collection():
                 distance=Distance.COSINE
             )
         )
+
+
+# ==========================================
+# Create document collection
+# ==========================================
+
 def create_document_collection():
 
     collections = client.get_collections().collections
@@ -100,6 +134,12 @@ def create_document_collection():
                 distance=Distance.COSINE
             )
         )
+
+
+# ==========================================
+# Create collections
+# ==========================================
+
 create_text_collection()
 
 create_image_collection()
