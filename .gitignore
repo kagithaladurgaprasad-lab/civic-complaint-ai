@@ -1,0 +1,49 @@
+# Environment variables / secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# SQLite database
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded complaint images
+uploads/
+
+# Dataset files
+datasets/
+
+# Qdrant local storage
+qdrant_storage/
+
+# Model/cache files
+.cache/
+huggingface/
+sentence_transformers/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+# Local datasets and vector database
+data/
+Pothole_Image_Data/
+qdrant_data/
+
+# Local downloaded official documents
+official_documents/
