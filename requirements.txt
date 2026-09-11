@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+streamlit
+sqlalchemy
+python-dotenv
+python-jose
+passlib
+bcrypt
+python-multipart
+email-validator
+sentence-transformers
+qdrant-client
+google-genai
+torch
+transformers
+pillow
+requests
