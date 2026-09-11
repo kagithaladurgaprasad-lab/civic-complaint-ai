@@ -1,3 +1,4 @@
+
 from sentence_transformers import SentenceTransformer
 
 from vector_db import (
@@ -7,16 +8,27 @@ from vector_db import (
 
 
 # ============================================================
-# TEXT EMBEDDING MODEL
+# LAZY-LOADED TEXT EMBEDDING MODEL
 # ============================================================
 
-model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
+model = None
+
+
+def get_model():
+
+    global model
+
+    if model is None:
+
+        model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )
+
+    return model
 
 
 # ============================================================
-# RETRIEVE MUNICIPAL DOCUMENTS
+# RETRIEVE OFFICIAL MUNICIPAL DOCUMENTS
 # ============================================================
 
 def retrieve_documents(
@@ -24,18 +36,13 @@ def retrieve_documents(
     top_k=5
 ):
 
-    # --------------------------------------------------------
-    # Create query embedding
-    # --------------------------------------------------------
+    # Load model only when document retrieval is required
+    embedding_model = get_model()
 
-    query_embedding = model.encode(
+    query_embedding = embedding_model.encode(
         query
     ).tolist()
 
-
-    # --------------------------------------------------------
-    # Search Qdrant
-    # --------------------------------------------------------
 
     results = client.query_points(
 
@@ -46,22 +53,23 @@ def retrieve_documents(
         limit=top_k,
 
         with_payload=True
+
     ).points
 
 
-    # --------------------------------------------------------
-    # Normalize document metadata
-    # --------------------------------------------------------
-
     documents = []
 
-    for index, result in enumerate(results, start=1):
+
+    for index, result in enumerate(
+        results,
+        start=1
+    ):
 
         payload = result.payload or {}
 
+
         document = {
 
-            # Stable source ID
             "source_id": payload.get(
                 "document_id",
                 payload.get(
@@ -70,7 +78,6 @@ def retrieve_documents(
                 )
             ),
 
-            # Document title
             "title": payload.get(
                 "title",
                 payload.get(
@@ -79,13 +86,11 @@ def retrieve_documents(
                 )
             ),
 
-            # Source organization / URL / file
             "source": payload.get(
                 "source",
                 "Unknown Source"
             ),
 
-            # Actual document content
             "text": payload.get(
                 "text",
                 payload.get(
@@ -93,10 +98,6 @@ def retrieve_documents(
                     ""
                 )
             ),
-
-            # ------------------------------------------------
-            # SLA METADATA
-            # ------------------------------------------------
 
             "document_type": payload.get(
                 "document_type"
@@ -118,10 +119,6 @@ def retrieve_documents(
                 "sla_days"
             ),
 
-            # ------------------------------------------------
-            # Optional date information
-            # ------------------------------------------------
-
             "effective_date": payload.get(
                 "effective_date"
             ),
@@ -130,14 +127,14 @@ def retrieve_documents(
                 "updated_at"
             ),
 
-            # ------------------------------------------------
-            # Qdrant similarity score
-            # ------------------------------------------------
-
             "similarity_score": result.score
         }
 
-        documents.append(document)
+
+        documents.append(
+            document
+        )
 
 
     return documents
+

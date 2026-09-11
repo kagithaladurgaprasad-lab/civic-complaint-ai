@@ -1,3 +1,4 @@
+
 from sentence_transformers import SentenceTransformer
 
 from qdrant_client.models import (
@@ -10,12 +11,23 @@ from vector_db import client, TEXT_COLLECTION
 
 
 # ============================================================
-# LOAD EMBEDDING MODEL
+# LAZY-LOADED TEXT EMBEDDING MODEL
 # ============================================================
 
-model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
+model = None
+
+
+def get_model():
+
+    global model
+
+    if model is None:
+
+        model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )
+
+    return model
 
 
 # ============================================================
@@ -28,27 +40,28 @@ def search_complaints(
     top_k=5
 ):
 
-    # --------------------------------------------------------
-    # 1. Convert query into embedding
-    # --------------------------------------------------------
+    # Load model only when search is actually required
+    embedding_model = get_model()
 
-    query_embedding = model.encode(
+    query_embedding = embedding_model.encode(
         query,
         normalize_embeddings=True
     ).tolist()
 
-    # --------------------------------------------------------
-    # 2. Create category filter
-    # --------------------------------------------------------
 
     complaint_filter = None
+
 
     if category:
 
         complaint_filter = Filter(
+
             must=[
+
                 FieldCondition(
+
                     key="category",
+
                     match=MatchValue(
                         value=category
                     )
@@ -56,9 +69,6 @@ def search_complaints(
             ]
         )
 
-    # --------------------------------------------------------
-    # 3. Search Qdrant
-    # --------------------------------------------------------
 
     results = client.query_points(
 
@@ -73,5 +83,6 @@ def search_complaints(
         with_payload=True
 
     ).points
+
 
     return results

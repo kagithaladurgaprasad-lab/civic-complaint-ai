@@ -1,7 +1,10 @@
+
 from sentence_transformers import SentenceTransformer
+
 from qdrant_client.models import PointStruct
 
 from image_embeddings import create_image_embedding
+
 from vector_db import (
     client,
     TEXT_COLLECTION,
@@ -9,31 +12,46 @@ from vector_db import (
 )
 
 
-# -----------------------------
-# Text embedding model
-# -----------------------------
+# ============================================================
+# LAZY-LOADED TEXT EMBEDDING MODEL
+# ============================================================
 
-text_model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
+text_model = None
 
 
-# -----------------------------
-# Create text embedding
-# -----------------------------
+def get_text_model():
 
-def create_text_embedding(text):
+    global text_model
 
-    embedding = text_model.encode(
+    if text_model is None:
+
+        text_model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )
+
+    return text_model
+
+
+# ============================================================
+# CREATE TEXT EMBEDDING
+# ============================================================
+
+def create_text_embedding(
+    text
+):
+
+    model = get_text_model()
+
+    embedding = model.encode(
         text
     )
 
     return embedding.tolist()
 
 
-# -----------------------------
-# Create image embedding
-# -----------------------------
+# ============================================================
+# CREATE IMAGE EMBEDDING
+# ============================================================
 
 def create_image_embedding_from_file(
     image_path
@@ -44,9 +62,9 @@ def create_image_embedding_from_file(
     )
 
 
-# -----------------------------
-# Store text complaint
-# -----------------------------
+# ============================================================
+# STORE TEXT COMPLAINT
+# ============================================================
 
 def store_text_complaint(
 
@@ -65,6 +83,7 @@ def store_text_complaint(
     latitude,
 
     longitude
+
 ):
 
     text = f"{title}. {description}"
@@ -98,7 +117,9 @@ def store_text_complaint(
             "latitude": latitude,
 
             "longitude": longitude
+
         }
+
     )
 
 
@@ -107,12 +128,13 @@ def store_text_complaint(
         collection_name=TEXT_COLLECTION,
 
         points=[point]
+
     )
 
 
-# -----------------------------
-# Store image complaint
-# -----------------------------
+# ============================================================
+# STORE IMAGE COMPLAINT
+# ============================================================
 
 def store_image_complaint(
 
@@ -133,11 +155,13 @@ def store_image_complaint(
     latitude,
 
     longitude
+
 ):
 
     embedding = create_image_embedding_from_file(
 
         image_path
+
     )
 
 
@@ -166,7 +190,9 @@ def store_image_complaint(
             "longitude": longitude,
 
             "image_path": image_path
+
         }
+
     )
 
 
@@ -175,4 +201,6 @@ def store_image_complaint(
         collection_name=IMAGE_COLLECTION,
 
         points=[point]
+
     )
+
