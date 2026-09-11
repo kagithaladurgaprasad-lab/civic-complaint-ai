@@ -1,9 +1,10 @@
+
 import os
 from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
@@ -36,20 +37,40 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # Password Hashing
 # ==========================================
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
-)
+def hash_password(password: str) -> str:
+    """
+    Hash a password using bcrypt.
+    Bcrypt supports passwords up to 72 bytes.
+    """
+
+    password_bytes = password.encode("utf-8")
+
+    if len(password_bytes) > 72:
+        raise ValueError(
+            "Password must be 72 bytes or fewer."
+        )
+
+    hashed = bcrypt.hashpw(
+        password_bytes,
+        bcrypt.gensalt()
+    )
+
+    return hashed.decode("utf-8")
 
 
-def hash_password(password: str):
-    return pwd_context.hash(password)
+def verify_password(password: str, password_hash: str) -> bool:
+    """
+    Verify a plain-text password against a bcrypt hash.
+    """
 
+    password_bytes = password.encode("utf-8")
 
-def verify_password(password: str, password_hash: str):
-    return pwd_context.verify(
-        password,
-        password_hash
+    if len(password_bytes) > 72:
+        return False
+
+    return bcrypt.checkpw(
+        password_bytes,
+        password_hash.encode("utf-8")
     )
 
 
@@ -121,3 +142,4 @@ def verify_token(
             status_code=401,
             detail="Token Expired or Invalid"
         )
+
