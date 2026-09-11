@@ -1,5 +1,5 @@
 
-from sentence_transformers import SentenceTransformer
+from complaint_embeddings import get_text_model
 
 from vector_db import (
     client,
@@ -7,58 +7,27 @@ from vector_db import (
 )
 
 
-# ============================================================
-# LAZY-LOADED TEXT EMBEDDING MODEL
-# ============================================================
-
-model = None
-
-
-def get_model():
-
-    global model
-
-    if model is None:
-
-        model = SentenceTransformer(
-            "all-MiniLM-L6-v2"
-        )
-
-    return model
-
-
-# ============================================================
-# RETRIEVE OFFICIAL MUNICIPAL DOCUMENTS
-# ============================================================
-
 def retrieve_documents(
     query,
     top_k=5
 ):
 
-    # Load model only when document retrieval is required
-    embedding_model = get_model()
+    # Use the shared SentenceTransformer model
+    embedding_model = get_text_model()
 
     query_embedding = embedding_model.encode(
-        query
+        query,
+        normalize_embeddings=True
     ).tolist()
 
-
     results = client.query_points(
-
         collection_name=DOCUMENT_COLLECTION,
-
         query=query_embedding,
-
         limit=top_k,
-
         with_payload=True
-
     ).points
 
-
     documents = []
-
 
     for index, result in enumerate(
         results,
@@ -66,7 +35,6 @@ def retrieve_documents(
     ):
 
         payload = result.payload or {}
-
 
         document = {
 
@@ -130,11 +98,9 @@ def retrieve_documents(
             "similarity_score": result.score
         }
 
-
         documents.append(
             document
         )
-
 
     return documents
 
