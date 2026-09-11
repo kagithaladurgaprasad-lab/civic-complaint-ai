@@ -1,4 +1,3 @@
-
 import os
 import requests
 import pandas as pd
@@ -710,19 +709,66 @@ with submit_tab:
 
                 else:
 
+                    # ====================================================
+                    # DETAILED API ERROR DEBUGGING
+                    # ====================================================
+
                     st.error(
-                        f"❌ API Error: "
-                        f"{response.status_code}"
+                        f"❌ API Error: {response.status_code}"
                     )
+
+                    st.write("### 🔎 Server Response")
+
+                    st.write("**Response URL:**")
+                    st.code(
+                        response.url,
+                        language="text"
+                    )
+
+                    st.write("**Response Headers:**")
 
                     try:
                         st.json(
-                            response.json()
+                            dict(response.headers)
                         )
                     except Exception:
                         st.code(
-                            response.text
+                            str(response.headers),
+                            language="text"
                         )
+
+                    st.write("**Response Body:**")
+
+                    if response.text:
+
+                        try:
+                            st.json(
+                                response.json()
+                            )
+                        except Exception:
+                            st.code(
+                                response.text,
+                                language="text"
+                            )
+
+                    else:
+
+                        st.warning(
+                            "⚠️ The server returned an empty response body."
+                        )
+
+                    st.write("**Request Information:**")
+
+                    st.code(
+                        f"API URL: {API_URL}\n"
+                        f"Endpoint: /complaints\n"
+                        f"Method: POST\n"
+                        f"Timeout: 180 seconds\n"
+                        f"Image: {image.name}\n"
+                        f"Image Type: {image.type}\n"
+                        f"Image Size: {len(image.getvalue())} bytes",
+                        language="text"
+                    )
 
             except requests.exceptions.ConnectionError as e:
 
@@ -735,10 +781,29 @@ with submit_tab:
                     language="text"
                 )
 
+                st.info(
+                    f"FastAPI URL being used: {API_URL}"
+                )
+
             except requests.exceptions.Timeout as e:
 
                 st.error(
-                    "⏳ Request timed out."
+                    "⏳ Complaint request timed out."
+                )
+
+                st.code(
+                    str(e),
+                    language="text"
+                )
+
+                st.info(
+                    "The backend may still be processing the AI/RAG request."
+                )
+
+            except requests.exceptions.RequestException as e:
+
+                st.error(
+                    "❌ HTTP Request Error"
                 )
 
                 st.code(
@@ -751,6 +816,8 @@ with submit_tab:
                 st.error(
                     f"❌ Error: {str(e)}"
                 )
+
+                st.exception(e)
 
 
 # ============================================================
@@ -876,7 +943,7 @@ with history_tab:
     except requests.exceptions.Timeout as e:
 
         st.error(
-            "⏳ Request timed out."
+            "⏳ FastAPI request timed out."
         )
 
         st.code(
@@ -1243,9 +1310,7 @@ with admin_tab:
                         )
 
                         show_image(
-                            complaint.get(
-                                "image_path"
-                            )
+                            complaint.get("image_path")
                         )
 
                         # ================================================
@@ -1515,7 +1580,7 @@ with admin_tab:
     except requests.exceptions.Timeout as e:
 
         st.error(
-            "⏳ Request timed out."
+            "⏳ FastAPI request timed out."
         )
 
         st.code(
@@ -1528,4 +1593,3 @@ with admin_tab:
         st.error(
             f"❌ Error: {str(e)}"
         )
-
