@@ -1,3 +1,4 @@
+
 import os
 import requests
 import pandas as pd
@@ -8,7 +9,7 @@ import streamlit as st
 # CONFIG
 # ============================================================
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://civic-complaint-ai-xm2y.onrender.com"
 
 st.set_page_config(
     page_title="Civic Complaint AI",
@@ -337,11 +338,30 @@ if not st.session_state.logged_in:
                             f"❌ {message}"
                         )
 
-                except requests.exceptions.ConnectionError:
+                except requests.exceptions.ConnectionError as e:
 
                     st.error(
-                        "❌ Cannot connect to FastAPI. "
-                        "Run: uvicorn main:app --reload"
+                        "❌ Cannot connect to FastAPI."
+                    )
+
+                    st.code(
+                        str(e),
+                        language="text"
+                    )
+
+                    st.info(
+                        f"FastAPI URL being used: {API_URL}"
+                    )
+
+                except requests.exceptions.Timeout as e:
+
+                    st.error(
+                        "⏳ FastAPI request timed out."
+                    )
+
+                    st.code(
+                        str(e),
+                        language="text"
                     )
 
                 except Exception as e:
@@ -417,10 +437,30 @@ if not st.session_state.logged_in:
                             f"❌ {message}"
                         )
 
-                except requests.exceptions.ConnectionError:
+                except requests.exceptions.ConnectionError as e:
 
                     st.error(
                         "❌ Cannot connect to FastAPI."
+                    )
+
+                    st.code(
+                        str(e),
+                        language="text"
+                    )
+
+                    st.info(
+                        f"FastAPI URL being used: {API_URL}"
+                    )
+
+                except requests.exceptions.Timeout as e:
+
+                    st.error(
+                        "⏳ FastAPI request timed out."
+                    )
+
+                    st.code(
+                        str(e),
+                        language="text"
                     )
 
                 except Exception as e:
@@ -684,16 +724,26 @@ with submit_tab:
                             response.text
                         )
 
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError as e:
 
                 st.error(
                     "❌ Cannot connect to FastAPI."
                 )
 
-            except requests.exceptions.Timeout:
+                st.code(
+                    str(e),
+                    language="text"
+                )
+
+            except requests.exceptions.Timeout as e:
 
                 st.error(
                     "⏳ Request timed out."
+                )
+
+                st.code(
+                    str(e),
+                    language="text"
                 )
 
             except Exception as e:
@@ -812,10 +862,26 @@ with history_tab:
                     response.text
                 )
 
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError as e:
 
         st.error(
             "❌ Cannot connect to FastAPI."
+        )
+
+        st.code(
+            str(e),
+            language="text"
+        )
+
+    except requests.exceptions.Timeout as e:
+
+        st.error(
+            "⏳ Request timed out."
+        )
+
+        st.code(
+            str(e),
+            language="text"
         )
 
     except Exception as e:
@@ -1288,16 +1354,26 @@ with admin_tab:
                                             detail_response.text
                                         )
 
-                            except requests.exceptions.Timeout:
+                            except requests.exceptions.Timeout as e:
 
                                 st.error(
                                     "⏳ AI/RAG request timed out."
                                 )
 
-                            except requests.exceptions.ConnectionError:
+                                st.code(
+                                    str(e),
+                                    language="text"
+                                )
+
+                            except requests.exceptions.ConnectionError as e:
 
                                 st.error(
                                     "❌ Cannot connect to FastAPI."
+                                )
+
+                                st.code(
+                                    str(e),
+                                    language="text"
                                 )
 
                             except Exception as e:
@@ -1393,10 +1469,26 @@ with admin_tab:
                                             update_response.text
                                         )
 
-                            except requests.exceptions.ConnectionError:
+                            except requests.exceptions.ConnectionError as e:
 
                                 st.error(
                                     "❌ Cannot connect to FastAPI."
+                                )
+
+                                st.code(
+                                    str(e),
+                                    language="text"
+                                )
+
+                            except requests.exceptions.Timeout as e:
+
+                                st.error(
+                                    "⏳ Request timed out."
+                                )
+
+                                st.code(
+                                    str(e),
+                                    language="text"
                                 )
 
                             except Exception as e:
@@ -1405,16 +1497,30 @@ with admin_tab:
                                     f"❌ Error: {str(e)}"
                                 )
 
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError as e:
 
         st.error(
             "❌ Cannot connect to FastAPI."
         )
 
-    except requests.exceptions.Timeout:
+        st.code(
+            str(e),
+            language="text"
+        )
+
+        st.info(
+            f"FastAPI URL being used: {API_URL}"
+        )
+
+    except requests.exceptions.Timeout as e:
 
         st.error(
             "⏳ Request timed out."
+        )
+
+        st.code(
+            str(e),
+            language="text"
         )
 
     except Exception as e:
@@ -1422,3 +1528,4 @@ with admin_tab:
         st.error(
             f"❌ Error: {str(e)}"
         )
+
