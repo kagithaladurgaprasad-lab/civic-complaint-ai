@@ -1,3 +1,5 @@
+import time
+
 from category_classifier import classify_complaint
 from complaint_rules import get_complaint_rules
 
@@ -114,9 +116,6 @@ def extract_municipal_sla(documents, category):
 
     if category == "Other":
 
-        # These keywords identify official services
-        # related to parks and public greenery.
-
         park_keywords = [
             "park",
             "parks",
@@ -130,11 +129,6 @@ def extract_municipal_sla(documents, category):
             service = (
                 document.get("sub_category") or ""
             ).strip().lower()
-
-            # Example:
-            # "Maintenance of parks"
-            #
-            # This matches "park" / "parks".
 
             if any(
                 keyword in service
@@ -181,7 +175,10 @@ def extract_municipal_sla(documents, category):
             )
 
             if similarity >= OTHER_SLA_THRESHOLD:
-                matching_sla.append(document)
+
+                matching_sla.append(
+                    document
+                )
 
         if matching_sla:
 
@@ -234,18 +231,38 @@ def process_complaint(
     image_path
 ):
 
+    pipeline_start = time.perf_counter()
+
+    print()
+    print("=" * 60)
+    print("STARTING COMPLAINT PROCESSING")
+    print("=" * 60)
+
     # ==========================================
     # 1. Classify complaint
     # ==========================================
+
+    stage_start = time.perf_counter()
 
     category = classify_complaint(
         title,
         description
     )
 
+    print(
+        f"[1] Classification completed "
+        f"in {time.perf_counter() - stage_start:.2f}s"
+    )
+
+    print(
+        f"[1] Category: {category}"
+    )
+
     # ==========================================
     # 2. Get department and urgency
     # ==========================================
+
+    stage_start = time.perf_counter()
 
     rules = get_complaint_rules(
         category
@@ -254,6 +271,19 @@ def process_complaint(
     department = rules["department"]
 
     urgency = rules["urgency"]
+
+    print(
+        f"[2] Complaint rules completed "
+        f"in {time.perf_counter() - stage_start:.2f}s"
+    )
+
+    print(
+        f"[2] Department: {department}"
+    )
+
+    print(
+        f"[2] Urgency: {urgency}"
+    )
 
     # ==========================================
     # 3. Create complaint information
@@ -294,6 +324,12 @@ Department: {department}
     # 5. Duplicate Detection
     # ==========================================
 
+    stage_start = time.perf_counter()
+
+    print(
+        "[3] Starting duplicate detection..."
+    )
+
     duplicate_result = detect_duplicate(
 
         text=f"{title} {description}",
@@ -307,9 +343,25 @@ Department: {department}
         category=category
     )
 
+    print(
+        f"[3] Duplicate detection completed "
+        f"in {time.perf_counter() - stage_start:.2f}s"
+    )
+
+    print(
+        f"[3] Duplicate decision: "
+        f"{duplicate_result.get('decision', 'UNKNOWN')}"
+    )
+
     # ==========================================
     # 6. Retrieve Municipal Documents
     # ==========================================
+
+    stage_start = time.perf_counter()
+
+    print(
+        "[4] Starting municipal document retrieval..."
+    )
 
     documents = retrieve_documents(
 
@@ -318,9 +370,21 @@ Department: {department}
         top_k=5
     )
 
+    print(
+        f"[4] Document retrieval completed "
+        f"in {time.perf_counter() - stage_start:.2f}s"
+    )
+
+    print(
+        f"[4] Documents retrieved: "
+        f"{len(documents)}"
+    )
+
     # ==========================================
     # 7. Extract Official Municipal SLA
     # ==========================================
+
+    stage_start = time.perf_counter()
 
     municipal_sla = extract_municipal_sla(
 
@@ -328,6 +392,24 @@ Department: {department}
 
         category=category
     )
+
+    print(
+        f"[5] SLA extraction completed "
+        f"in {time.perf_counter() - stage_start:.2f}s"
+    )
+
+    if municipal_sla:
+
+        print(
+            f"[5] SLA: "
+            f"{municipal_sla.get('sla_days')} days"
+        )
+
+    else:
+
+        print(
+            "[5] No matching official SLA found"
+        )
 
     # ==========================================
     # 8. Similar Complaints
@@ -338,9 +420,20 @@ Department: {department}
         []
     )
 
+    print(
+        f"[6] Similar complaints: "
+        f"{len(similar_complaints)}"
+    )
+
     # ==========================================
     # 9. Build RAG Context
     # ==========================================
+
+    stage_start = time.perf_counter()
+
+    print(
+        "[6] Building RAG context..."
+    )
 
     rag_context = build_rag_context(
 
@@ -361,17 +454,48 @@ Department: {department}
         )
     )
 
+    print(
+        f"[6] RAG context completed "
+        f"in {time.perf_counter() - stage_start:.2f}s"
+    )
+
     # ==========================================
     # 10. Gemini Analysis
     # ==========================================
+
+    stage_start = time.perf_counter()
+
+    print(
+        "[7] Starting Gemini analysis..."
+    )
 
     ai_analysis = generate_complaint_analysis(
         rag_context
     )
 
+    print(
+        f"[7] Gemini analysis completed "
+        f"in {time.perf_counter() - stage_start:.2f}s"
+    )
+
     # ==========================================
     # 11. Final Result
     # ==========================================
+
+    total_time = (
+        time.perf_counter()
+        - pipeline_start
+    )
+
+    print(
+        f"[TOTAL] Complaint processing completed "
+        f"in {total_time:.2f}s"
+    )
+
+    print("=" * 60)
+    print("COMPLAINT PROCESSING COMPLETED")
+    print("=" * 60)
+    print()
 
     return {
 
