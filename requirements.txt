@@ -11,8 +11,9 @@ email-validator
 sentence-transformers
 qdrant-client
 google-genai
-torch
+torch==2.6.0+cpu
 transformers
 pillow
 requests
 psycopg2-binary
+--extra-index-url https://download.pytorch.org/whl/cpu
