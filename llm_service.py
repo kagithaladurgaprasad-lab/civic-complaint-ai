@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from google.genai import errors
 
 
 # ==========================================
@@ -26,7 +27,10 @@ if not GEMINI_API_KEY:
 # ==========================================
 
 client = genai.Client(
-    api_key=GEMINI_API_KEY
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(
+        timeout=30000
+    )
 )
 
 
@@ -275,8 +279,8 @@ When a historical complaint ID is available:
 - Never invent a complaint ID.
 
 Do not assume a historical complaint was resolved
-unless the retrieved data explicitly states that it
-was resolved.
+unless the retrieved data explicitly states that
+it was resolved.
 
 
 ==================================================
@@ -303,6 +307,7 @@ NEVER invent:
 
 [DOC-4]
 [DOC-5]
+
 or any other identifier that was not supplied.
 
 Never change an existing source identifier.
@@ -612,18 +617,52 @@ Grounded reasoning over unsupported conclusions.
 
 def generate_complaint_analysis(rag_context):
 
-    response = client.models.generate_content(
+    try:
 
-        model="gemini-3.6-flash",
+        response = client.models.generate_content(
 
-        contents=rag_context,
+            model="gemini-3.6-flash",
 
-        config=types.GenerateContentConfig(
+            contents=rag_context,
 
-            system_instruction=SYSTEM_INSTRUCTION,
+            config=types.GenerateContentConfig(
 
-            temperature=0.2
+                system_instruction=SYSTEM_INSTRUCTION,
+
+                temperature=0.2
+            )
         )
-    )
 
-    return response.text
+        if response and response.text:
+
+            return response.text
+
+        return (
+            "Gemini returned an empty response. "
+            "The complaint was processed using the "
+            "available municipal and historical evidence."
+        )
+
+    except errors.APIError as e:
+
+        print(
+            f"Gemini API error: {e}"
+        )
+
+        return (
+            "Gemini analysis was unavailable. "
+            "The complaint was processed using the "
+            "available municipal and historical evidence."
+        )
+
+    except Exception as e:
+
+        print(
+            f"Gemini unexpected error: {e}"
+        )
+
+        return (
+            "Gemini analysis was unavailable. "
+            "The complaint was processed using the "
+            "available municipal and historical evidence."
+        )
