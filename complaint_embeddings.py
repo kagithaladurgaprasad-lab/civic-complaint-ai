@@ -1,9 +1,15 @@
+
 import os
 
-# Reduce CPU thread memory usage on Render
+# ============================================================
+# RENDER CPU / MEMORY SETTINGS
+# ============================================================
+
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+import gc
 
 import torch
 
@@ -17,13 +23,13 @@ from image_embeddings import create_image_embedding
 from vector_db import (
     client,
     TEXT_COLLECTION,
-    IMAGE_COLLECTION
+    IMAGE_COLLECTION,
 )
 
 
-# ---------------------------------------------------------
-# Shared text embedding model
-# ---------------------------------------------------------
+# ============================================================
+# SHARED TEXT EMBEDDING MODEL
+# ============================================================
 
 text_embedding_model = None
 
@@ -32,100 +38,37 @@ class MiniLMTextModel:
 
     def __init__(self):
 
-        from transformers import (
-            AutoTokenizer,
-            AutoModel
-        )
+        from sentence_transformers import SentenceTransformer
 
         model_name = "sentence-transformers/all-MiniLM-L6-v2"
 
-        # Load tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name
+        self.model = SentenceTransformer(
+            model_name,
+            device="cpu",
         )
 
-        # Load transformer model
-        self.model = AutoModel.from_pretrained(
-            model_name
-        )
-
-        # Inference mode
         self.model.eval()
-
-        # Disable gradients
-        for parameter in self.model.parameters():
-            parameter.requires_grad = False
 
 
     def encode(
         self,
         text,
-        normalize_embeddings=True
+        normalize_embeddings=True,
     ):
 
-        # Tokenize text
-        inputs = self.tokenizer(
+        embedding = self.model.encode(
             text,
-            return_tensors="pt",
-            truncation=True,
-            max_length=256,
-            padding=True
+            normalize_embeddings=normalize_embeddings,
+            convert_to_numpy=True,
+            show_progress_bar=False,
         )
 
-        # Inference only
-        with torch.no_grad():
-
-            outputs = self.model(
-                **inputs
-            )
-
-        # Token embeddings
-        token_embeddings = outputs.last_hidden_state
-
-        # Attention mask
-        attention_mask = inputs["attention_mask"]
-
-        # Expand mask
-        mask = (
-            attention_mask
-            .unsqueeze(-1)
-            .expand(token_embeddings.size())
-            .float()
-        )
-
-        # Mean pooling
-        summed = torch.sum(
-            token_embeddings * mask,
-            dim=1
-        )
-
-        counts = torch.clamp(
-            mask.sum(dim=1),
-            min=1e-9
-        )
-
-        sentence_embedding = (
-            summed / counts
-        )
-
-        # Normalize embedding
-        if normalize_embeddings:
-
-            sentence_embedding = (
-                torch.nn.functional.normalize(
-                    sentence_embedding,
-                    p=2,
-                    dim=1
-                )
-            )
-
-        # Convert to Python list
-        return sentence_embedding[0].cpu().numpy()
+        return embedding
 
 
-# ---------------------------------------------------------
-# Get shared text model
-# ---------------------------------------------------------
+# ============================================================
+# GET SHARED TEXT MODEL
+# ============================================================
 
 def get_text_model():
 
@@ -138,9 +81,9 @@ def get_text_model():
     return text_embedding_model
 
 
-# ---------------------------------------------------------
-# Create text embedding
-# ---------------------------------------------------------
+# ============================================================
+# CREATE TEXT EMBEDDING
+# ============================================================
 
 def create_text_embedding(text):
 
@@ -148,28 +91,28 @@ def create_text_embedding(text):
 
     embedding = model.encode(
         text,
-        normalize_embeddings=True
+        normalize_embeddings=True,
     )
 
     return embedding.tolist()
 
 
-# ---------------------------------------------------------
-# Create image embedding
-# ---------------------------------------------------------
+# ============================================================
+# CREATE IMAGE EMBEDDING
+# ============================================================
 
 def create_image_embedding_from_file(
-    image_path
+    image_path,
 ):
 
     return create_image_embedding(
-        image_path
+        image_path,
     )
 
 
-# ---------------------------------------------------------
-# Store text complaint in Qdrant
-# ---------------------------------------------------------
+# ============================================================
+# STORE TEXT COMPLAINT IN QDRANT
+# ============================================================
 
 def store_text_complaint(
     complaint_id,
@@ -179,71 +122,16 @@ def store_text_complaint(
     department,
     urgency,
     latitude,
-    longitude
+    longitude,
 ):
 
-    # Combine title and description
     text = f"{title}. {description}"
 
-    # Create 384-dimensional embedding
     embedding = create_text_embedding(
-        text
+        text,
     )
 
-    # Create Qdrant point
     point = PointStruct(
-
-        id=complaint_id,
-
-        vector=embedding,
-
-        payload={
-            "complaint_id": complaint_id,
-            "title": title,
-            "description": description,
-            "category": category,
-            "department": department,
-            "urgency": urgency,
-            "latitude": latitude,
-            "longitude": longitude
-        }
-    )
-
-    # Store in Qdrant
-    client.upsert(
-
-        collection_name=TEXT_COLLECTION,
-
-        points=[
-            point
-        ]
-    )
-
-
-# ---------------------------------------------------------
-# Store image complaint in Qdrant
-# ---------------------------------------------------------
-
-def store_image_complaint(
-    complaint_id,
-    image_path,
-    title,
-    description,
-    category,
-    department,
-    urgency,
-    latitude,
-    longitude
-):
-
-    # Create 512-dimensional CLIP embedding
-    embedding = create_image_embedding_from_file(
-        image_path
-    )
-
-    # Create Qdrant point
-    point = PointStruct(
-
         id=complaint_id,
 
         vector=embedding,
@@ -257,16 +145,64 @@ def store_image_complaint(
             "urgency": urgency,
             "latitude": latitude,
             "longitude": longitude,
-            "image_path": image_path
-        }
+        },
     )
 
-    # Store in Qdrant
     client.upsert(
-
-        collection_name=IMAGE_COLLECTION,
-
+        collection_name=TEXT_COLLECTION,
         points=[
-            point
-        ]
+            point,
+        ],
     )
+
+    # Release temporary objects
+    gc.collect()
+
+
+# ============================================================
+# STORE IMAGE COMPLAINT IN QDRANT
+# ============================================================
+
+def store_image_complaint(
+    complaint_id,
+    image_path,
+    title,
+    description,
+    category,
+    department,
+    urgency,
+    latitude,
+    longitude,
+):
+
+    embedding = create_image_embedding_from_file(
+        image_path,
+    )
+
+    point = PointStruct(
+        id=complaint_id,
+
+        vector=embedding,
+
+        payload={
+            "complaint_id": complaint_id,
+            "title": title,
+            "description": description,
+            "category": category,
+            "department": department,
+            "urgency": urgency,
+            "latitude": latitude,
+            "longitude": longitude,
+            "image_path": image_path,
+        },
+    )
+
+    client.upsert(
+        collection_name=IMAGE_COLLECTION,
+        points=[
+            point,
+        ],
+    )
+
+    gc.collect()
+
