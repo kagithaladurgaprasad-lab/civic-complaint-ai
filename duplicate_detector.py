@@ -1,3 +1,4 @@
+
 from search_complaints import search_complaints
 from search_images import search_similar_images
 from utils import calculate_distance
@@ -39,15 +40,52 @@ def detect_duplicate(
     top_k=5
 ):
 
+    print(
+        f"[DUPLICATE DEBUG] Category: {category}"
+    )
+
     # ========================================
     # 1. SEARCH HISTORICAL COMPLAINTS
     # ========================================
 
-    text_results = search_complaints(
-        query=text,
-        category=category,
-        top_k=top_k
-    )
+    # TEMPORARY DIAGNOSTIC:
+    #
+    # The text embedding model is currently
+    # suspected of causing the Render process
+    # to restart on the 512 MB instance.
+    #
+    # For non-Pothole complaints, temporarily
+    # skip text embedding search.
+    #
+    # This is NOT the final duplicate logic.
+
+    text_results = []
+
+    if category == "Pothole":
+
+        print(
+            "[DUPLICATE DEBUG] "
+            "Running text duplicate search..."
+        )
+
+        text_results = search_complaints(
+            query=text,
+            category=category,
+            top_k=top_k
+        )
+
+        print(
+            "[DUPLICATE DEBUG] "
+            "Text duplicate search completed."
+        )
+
+    else:
+
+        print(
+            "[DUPLICATE DEBUG] "
+            "Text duplicate search SKIPPED "
+            "for diagnostic test."
+        )
 
 
     # ========================================
@@ -56,21 +94,24 @@ def detect_duplicate(
 
     image_results = []
 
-    # Currently our image collection contains
+    # Image collection currently contains
     # only pothole reference images.
-    #
-    # Therefore, use CLIP visual search only
-    # for Pothole complaints.
-    #
-    # This prevents pothole images from being
-    # shown as evidence for Streetlight,
-    # Garbage, Drainage, etc.
 
     if category == "Pothole":
+
+        print(
+            "[DUPLICATE DEBUG] "
+            "Running image duplicate search..."
+        )
 
         image_results = search_similar_images(
             image_path=image_path,
             top_k=top_k
+        )
+
+        print(
+            "[DUPLICATE DEBUG] "
+            "Image duplicate search completed."
         )
 
 
@@ -173,17 +214,11 @@ def detect_duplicate(
         # Category score
         # --------------------------------
 
-        # Category filtering is already applied
-        # inside search_complaints().
         category_score = 1.0
 
 
         # --------------------------------
         # Historical duplicate score
-        #
-        # Image score is NOT included because
-        # the current image dataset is only a
-        # standalone pothole reference dataset.
         # --------------------------------
 
         final_score = (
@@ -278,18 +313,8 @@ def detect_duplicate(
         )
 
 
-        # --------------------------------
-        # Location-aware decision
-        # --------------------------------
-
         if distance is not None:
 
-            # Very close location + STRONG
-            # semantic similarity.
-            #
-            # Example:
-            # Same pothole reported twice
-            # at almost the same location.
             if (
                 distance <= 100
                 and text_score >= 0.80
@@ -297,12 +322,6 @@ def detect_duplicate(
 
                 decision = "DUPLICATE"
 
-
-            # Nearby location + reasonably
-            # strong semantic similarity.
-            #
-            # Important:
-            # Location alone is NOT enough.
             elif (
                 distance <= 500
                 and text_score >= 0.70
@@ -310,19 +329,12 @@ def detect_duplicate(
 
                 decision = "POSSIBLY_RELATED"
 
-
-            # Different issue or weak
-            # semantic similarity.
             else:
 
                 decision = "NEW"
 
 
         else:
-
-            # --------------------------------
-            # No historical location available
-            # --------------------------------
 
             if text_score >= 0.85:
 
@@ -336,7 +348,6 @@ def detect_duplicate(
 
                 decision = "NEW"
 
-
     else:
 
         best_match = None
@@ -345,7 +356,22 @@ def detect_duplicate(
 
 
     # ========================================
-    # 7. RETURN RESULTS
+    # 7. DEBUG RESULT
+    # ========================================
+
+    print(
+        "[DUPLICATE DEBUG] "
+        f"Decision: {decision}"
+    )
+
+    print(
+        "[DUPLICATE DEBUG] "
+        f"Candidates: {len(candidates)}"
+    )
+
+
+    # ========================================
+    # 8. RETURN RESULTS
     # ========================================
 
     return {
@@ -358,3 +384,4 @@ def detect_duplicate(
 
         "visual_evidence": visual_evidence
     }
+
