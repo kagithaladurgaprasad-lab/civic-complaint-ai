@@ -1,117 +1,93 @@
 
 import os
+import gc
 
-# ============================================================
-# RENDER CPU / MEMORY SETTINGS
-# ============================================================
-
+# Keep CPU usage low on Render
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-import gc
-
-import torch
-
-torch.set_num_threads(1)
-torch.set_num_interop_threads(1)
-
 from qdrant_client.models import PointStruct
 
 from image_embeddings import create_image_embedding
-
-from vector_db import (
-    client,
-    TEXT_COLLECTION,
-    IMAGE_COLLECTION,
-)
+from vector_db import client, TEXT_COLLECTION, IMAGE_COLLECTION
 
 
 # ============================================================
-# SHARED TEXT EMBEDDING MODEL
+# FAST EMBED TEXT MODEL
 # ============================================================
 
 text_embedding_model = None
 
 
 class MiniLMTextModel:
+    """
+    Lightweight text embedding wrapper using FastEmbed.
+
+    Model:
+        sentence-transformers/all-MiniLM-L6-v2
+
+    Output:
+        384-dimensional normalized embedding
+    """
 
     def __init__(self):
+        from fastembed import TextEmbedding
 
-        from sentence_transformers import SentenceTransformer
-
-        model_name = "sentence-transformers/all-MiniLM-L6-v2"
-
-        self.model = SentenceTransformer(
-            model_name,
-            device="cpu",
+        self.model = TextEmbedding(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
-        self.model.eval()
-
-
-    def encode(
-        self,
-        text,
-        normalize_embeddings=True,
-    ):
-
-        embedding = self.model.encode(
-            text,
-            normalize_embeddings=normalize_embeddings,
-            convert_to_numpy=True,
-            show_progress_bar=False,
+    def encode(self, text, normalize_embeddings=True):
+        embeddings = list(
+            self.model.embed([text])
         )
+
+        embedding = embeddings[0]
 
         return embedding
 
 
-# ============================================================
-# GET SHARED TEXT MODEL
-# ============================================================
-
 def get_text_model():
+    """
+    Load the text embedding model only when required.
+    """
 
     global text_embedding_model
 
     if text_embedding_model is None:
-
+        print("[TEXT EMBEDDING] Loading FastEmbed MiniLM model...")
         text_embedding_model = MiniLMTextModel()
+        print("[TEXT EMBEDDING] FastEmbed model loaded.")
 
     return text_embedding_model
 
 
-# ============================================================
-# CREATE TEXT EMBEDDING
-# ============================================================
-
 def create_text_embedding(text):
+    """
+    Create a 384-dimensional MiniLM embedding.
+    """
 
     model = get_text_model()
 
     embedding = model.encode(
         text,
-        normalize_embeddings=True,
+        normalize_embeddings=True
     )
 
     return embedding.tolist()
 
 
 # ============================================================
-# CREATE IMAGE EMBEDDING
+# IMAGE EMBEDDING
 # ============================================================
 
-def create_image_embedding_from_file(
-    image_path,
-):
-
-    return create_image_embedding(
-        image_path,
-    )
+def create_image_embedding_from_file(image_path):
+    return create_image_embedding(image_path)
 
 
 # ============================================================
-# STORE TEXT COMPLAINT IN QDRANT
+# STORE TEXT COMPLAINT
 # ============================================================
 
 def store_text_complaint(
@@ -120,88 +96,74 @@ def store_text_complaint(
     description,
     category,
     department,
-    urgency,
     latitude,
-    longitude,
+    longitude
 ):
+    """
+    Create and store text embedding in Qdrant.
+    """
 
     text = f"{title}. {description}"
 
-    embedding = create_text_embedding(
-        text,
-    )
+    embedding = create_text_embedding(text)
 
     point = PointStruct(
         id=complaint_id,
-
         vector=embedding,
-
         payload={
             "complaint_id": complaint_id,
             "title": title,
             "description": description,
             "category": category,
             "department": department,
-            "urgency": urgency,
             "latitude": latitude,
-            "longitude": longitude,
-        },
+            "longitude": longitude
+        }
     )
 
     client.upsert(
         collection_name=TEXT_COLLECTION,
-        points=[
-            point,
-        ],
+        points=[point]
     )
 
-    # Release temporary objects
     gc.collect()
 
 
 # ============================================================
-# STORE IMAGE COMPLAINT IN QDRANT
+# STORE IMAGE COMPLAINT
 # ============================================================
 
 def store_image_complaint(
     complaint_id,
     image_path,
-    title,
-    description,
     category,
     department,
-    urgency,
     latitude,
-    longitude,
+    longitude
 ):
+    """
+    Create and store image embedding in Qdrant.
+    """
 
-    embedding = create_image_embedding_from_file(
-        image_path,
-    )
+    embedding = create_image_embedding_from_file(image_path)
 
     point = PointStruct(
         id=complaint_id,
-
         vector=embedding,
-
         payload={
             "complaint_id": complaint_id,
-            "title": title,
-            "description": description,
+            "image_id": complaint_id,
+            "image_path": image_path,
             "category": category,
             "department": department,
-            "urgency": urgency,
             "latitude": latitude,
-            "longitude": longitude,
-            "image_path": image_path,
-        },
+            "longitude": longitude
+        }
     )
 
     client.upsert(
         collection_name=IMAGE_COLLECTION,
-        points=[
-            point,
-        ],
+        points=[point]
     )
 
     gc.collect()

@@ -8,7 +8,7 @@ passlib
 bcrypt
 python-multipart
 email-validator
-sentence-transformers
+fastembed
 qdrant-client
 google-genai
 torch==2.6.0+cpu
