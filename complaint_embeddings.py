@@ -28,7 +28,7 @@ class MiniLMTextModel:
         sentence-transformers/all-MiniLM-L6-v2
 
     Output:
-        384-dimensional normalized embedding
+        384-dimensional embedding
     """
 
     def __init__(self):
@@ -43,9 +43,7 @@ class MiniLMTextModel:
             self.model.embed([text])
         )
 
-        embedding = embeddings[0]
-
-        return embedding
+        return embeddings[0]
 
 
 def get_text_model():
@@ -96,11 +94,12 @@ def store_text_complaint(
     description,
     category,
     department,
+    urgency,
     latitude,
     longitude
 ):
     """
-    Create and store text embedding in Qdrant.
+    Create and store a text complaint embedding in Qdrant.
     """
 
     text = f"{title}. {description}"
@@ -116,6 +115,7 @@ def store_text_complaint(
             "description": description,
             "category": category,
             "department": department,
+            "urgency": urgency,
             "latitude": latitude,
             "longitude": longitude
         }
@@ -138,11 +138,12 @@ def store_image_complaint(
     image_path,
     category,
     department,
+    urgency,
     latitude,
     longitude
 ):
     """
-    Create and store image embedding in Qdrant.
+    Create and store an image complaint embedding in Qdrant.
     """
 
     embedding = create_image_embedding_from_file(image_path)
@@ -156,6 +157,7 @@ def store_image_complaint(
             "image_path": image_path,
             "category": category,
             "department": department,
+            "urgency": urgency,
             "latitude": latitude,
             "longitude": longitude
         }
